@@ -1,5 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Pitch Jackpot</title>
+<title>Pitch Perfect</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Limelight&family=Monoton&family=Orbitron:wght@700;900&family=Figtree:wght@400;600;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
@@ -265,7 +265,7 @@ function step(){
   if(phase==="prep"){beep(left>0?660:990,.09);if(left<=0){phase="live";left=total;$("clock").classList.remove("prep");$("clockState").textContent="Pitch now"}}
   else if(phase==="live"){
     if(left<=10&&left>0){$("clock").classList.add("low");beep(520,.05)}
-    if(left<=0){phase="done";stopClock();const c=$("clock");c.classList.remove("low");c.classList.add("done");$("clockState").textContent="Time’s up";buzzer()}
+    if(left<=0){phase="done";stopClock();const c=$("clock");c.classList.remove("low");c.classList.add("done");$("clockState").textContent="Time’s up";winJingle();coinShower()}
   }
   paint();
 }
@@ -295,6 +295,24 @@ function slotSound(dur){
   src.connect(bp);bp.connect(g);g.connect(ac.destination);src.start(t0);src.stop(t0+dur);
   let t=0,gap=.035;
   while(t<dur-.05){beep(1800+Math.random()*500,.018,"square",.03,t);beep(700,.012,"triangle",.03,t+.004);t+=gap;gap*=1.045}
+}
+
+
+/* Winner jingle at time's up: fanfare + ka-ching + cascade of coins */
+function kaching(t,vol){
+  if(!ac)return;
+  [2093,2637,3136].forEach((f,k)=>{const o=ac.createOscillator(),g=ac.createGain();o.type="sine";o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0,t+k*.03);g.gain.linearRampToValueAtTime(vol,t+k*.03+.005);g.gain.exponentialRampToValueAtTime(.0005,t+k*.03+.7);o.start(t+k*.03);o.stop(t+.8)});
+  const n=ac.createBuffer(1,ac.sampleRate*.08,ac.sampleRate),d=n.getChannelData(0);for(let k=0;k<d.length;k++)d[k]=(Math.random()*2-1)*(1-k/d.length);
+  const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=n;f.type="bandpass";f.frequency.value=3500;s.connect(f);f.connect(g);g.connect(ac.destination);g.gain.value=vol*2;s.start(t);
+}
+function winJingle(){
+  if(!ac)return;
+  const t=ac.currentTime+.05;
+  if(musicGain){const g=musicGain.gain;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(.02,t+.15);g.setValueAtTime(.02,t+3.6);g.linearRampToValueAtTime(.16,t+5)}
+  const fan=[[523.25,.12],[659.25,.12],[783.99,.12],[1046.5,.36],[783.99,.12],[1046.5,.6]];
+  let x=t;fan.forEach(([f,d])=>{[["square",.06],["triangle",.08]].forEach(([ty,v])=>{const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;o.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(v,x);g.gain.setValueAtTime(v,x+d*.8);g.gain.exponentialRampToValueAtTime(.0005,x+d+.1);o.start(x);o.stop(x+d+.15)});x+=d});
+  kaching(x+.05,.12);kaching(x+.45,.12);
+  for(let k=0;k<22;k++){const tt=x+.9+k*.07+Math.random()*.04;beep(2200+Math.random()*1800,.06,"triangle",.035,tt-ac.currentTime)}
 }
 
 /* Background music: original upbeat synth loop (composed for this page), low volume, loops the whole session. Dips during the spin sound. */
